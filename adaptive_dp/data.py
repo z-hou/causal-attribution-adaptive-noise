@@ -1,5 +1,4 @@
 """Adult (AGENT.md §4): loading, checks, attribute groups, six-way split."""
-import json
 import re
 from pathlib import Path
 
@@ -140,7 +139,7 @@ def check_one_hot(X, params):
                 raise RuntimeError(f"one-hot check failed for {a['name']}")
 
 
-def prepare(scale=1.0, out_dir=None):
+def prepare(scale=1.0):
     """Full data pipeline. Returns X (float32), y, splits, params, info."""
     df, y, info = load_raw()
     cats = parse_names()
@@ -148,13 +147,6 @@ def prepare(scale=1.0, out_dir=None):
     params = fit_preprocess(df, splits["p_def"], cats)
     X = encode(df, params)
     check_one_hot(X, params)
-    _save(splits, params, out_dir)
     info["d_in"] = params["d_in"]
     info["n_cols"] = [len(c) for c in groups(params)]
     return X, y, splits, params, info
-
-
-def _save(splits, params, out_dir):
-    if out_dir is not None:
-        np.savez(Path(out_dir) / "splits.npz", **splits)
-        (Path(out_dir) / "preprocess.json").write_text(json.dumps(params, indent=2, ensure_ascii=False))

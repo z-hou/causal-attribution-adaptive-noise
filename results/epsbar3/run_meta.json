@@ -1,0 +1,71 @@
+{
+  "smoke": false,
+  "device": "cuda",
+  "epochs": 30,
+  "rotations": [
+    1,
+    2,
+    3,
+    4
+  ],
+  "n_grid": 10,
+  "scale": 1.0,
+  "n_select": 1000,
+  "split_sizes": {
+    "train": 7000,
+    "test": 7000,
+    "p_def": 14000,
+    "z_def": 2000,
+    "p_att": 14000,
+    "z_att": 2000
+  },
+  "d_in": 95,
+  "eps_mean": 3.0,
+  "eps_y": 3.0,
+  "eps_total": 39.0,
+  "s": 0.9846081638634646,
+  "a": {
+    "nonprivate": 0.8,
+    "uniform": 0.6,
+    "adaptive": 0.0
+  },
+  "split_half": {
+    "rotations_half1": [
+      1,
+      2
+    ],
+    "rotations_half2": [
+      3,
+      4
+    ],
+    "spearman": 0.8881118881118882
+  },
+  "data": {
+    "rows": 48842,
+    "attributes": 14,
+    "labels": [
+      "<=50K",
+      ">50K"
+    ],
+    "rows_adult_data": 32561,
+    "rows_adult_test": 16281,
+    "positive_rate": 0.23928176569346055,
+    "d_in": 95,
+    "n_cols": [
+      1,
+      9,
+      1,
+      8,
+      15,
+      7,
+      6,
+      3,
+      1,
+      1,
+      1,
+      42
+    ]
+  },
+  "n_interventions": 135,
+  "total_seconds": 34.46212124824524
+}

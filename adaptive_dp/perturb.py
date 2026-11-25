@@ -64,8 +64,3 @@ def perturb(X, y, params, eps_vec, eps_y, seed):
                 Xn[:, c] = laplace_mech(Xn[:, c], eps, rng)
     yn = label_rr(y, eps_y, rng)                     # binary randomised response (§5.3)
     return Xn, yn.astype(np.int64)
-
-
-def noise_level(kind, eps, k=None):
-    """allocation.csv `noise_*`: keep probability for categorical, Laplace scale 1/ε for continuous."""
-    return float(grr_keep_prob(eps, k)) if kind == "categorical" else float(1.0 / eps)

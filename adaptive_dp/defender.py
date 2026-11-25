@@ -1,54 +1,36 @@
-"""Defender (§6): calibration sets/models, proxy online RMIA, FSE-2022 attribute interventions, ΔMIA/ΔAcc.
+"""Defender: causal effects of the attributes, measured on the target model itself (user change 2026-11-24).
 
-Uses only P_def and Z_def. Index arrays are positions inside P_def (0 … |P_def|−1).
+The proxy target is m_D = train(D_train, seed 0), the same model as the nonprivate target of seed 0.
+It is attacked by a proxy offline RMIA (γ = 2):
+
+- members: all of D_train; non-members N: a random half of P_def;
+- K_REF reference models, all trained on the other half R of P_def (seeds 2001…2004), so they are OUT
+  for every evaluated record and Pr(x) is their mean (the offline formula with a = 1);
+- Pr(z) is the mean over the reference models on Z_def; the accuracy is that of m_D on N.
+
+FSE-2022 interventions (§6.3) set attribute j of every record of D_train, N and Z_def to α. ΔMIA_j and
+ΔAcc_j are the means over α of the change in AUC and accuracy; there is no averaging over models.
 """
 import numpy as np
 import pandas as pd
 import torch
-from scipy.stats import spearmanr
 
 from .model import correct, true_prob
-from .rmia import auc, online_score
+from .rmia import auc, offline_score
 from .train import EPOCHS, train
 
-K_DEF = 4
+K_REF = 4
 CONT_GRID = 10
+PDEF_SPLIT_SEED = 2000
+REF_SEED_BASE = 2000
+TARGET_SEED = 0
 
 
-def calibration_sets(n_pdef, K=K_DEF, seed_base=2000):
-    """S_k: a random half of P_def drawn with seed 2000 + k, k = 1…K."""
-    return [np.sort(np.random.default_rng(seed_base + k).choice(n_pdef, n_pdef // 2, replace=False))
-            for k in range(1, K + 1)]
-
-
-def train_calibration_models(X_pdef, y_pdef, sets, epochs=EPOCHS, seed_base=2000):
-    out = []
-    for k, S in enumerate(sets, start=1):
-        idx = torch.as_tensor(S, device=X_pdef.device)
-        out.append(train(X_pdef[idx], y_pdef[idx], seed=seed_base + k, epochs=epochs))
-    return out
-
-
-def model_outputs(models, X_pdef, y_pdef, X_zdef, y_zdef):
-    """Pr(x | m_k) on P_def, Pr(z | m_k) on Z_def, and correctness on P_def, for every model."""
-    P_x = np.stack([true_prob(m, X_pdef, y_pdef) for m in models])
-    P_z = np.stack([true_prob(m, X_zdef, y_zdef) for m in models])
-    corr = np.stack([correct(m, X_pdef, y_pdef) for m in models])
-    return P_x, P_z, corr
-
-
-def rotation_metrics(P_x, P_z, corr, sets, rotations):
-    """§6.2 for each proxy target t in `rotations` (1-based): (AUC_t, Acc_t)."""
-    K, n = P_x.shape
-    out = {}
-    for t in rotations:
-        i = t - 1
-        refs = [k for k in range(K) if k != i]
-        score = online_score(P_x[i], P_x[refs], P_z[i], P_z[refs])
-        member = np.zeros(n, dtype=bool)
-        member[sets[i]] = True
-        out[t] = (auc(score[member], score[~member]), float(corr[i][~member].mean()))
-    return out
+def split_pdef(n_pdef, seed=PDEF_SPLIT_SEED):
+    """Random halves of P_def (positions inside P_def): N = non-members, R = reference training set."""
+    perm = np.random.default_rng(seed).permutation(n_pdef)
+    half = n_pdef // 2
+    return np.sort(perm[:half]), np.sort(perm[half:])
 
 
 def value_set(attr, X_pdef, n_grid=CONT_GRID):
@@ -81,41 +63,55 @@ def set_attribute(X, cols, vec):
     return new
 
 
-def run_defender(X_pdef, y_pdef, X_zdef, y_zdef, params, rotations, n_grid=CONT_GRID, epochs=EPOCHS,
-                 log=print):
-    """Returns baseline, per-(j, α, t) interventions, per-attribute effects, split-half info, sets."""
-    sets = calibration_sets(len(X_pdef))
-    models = train_calibration_models(X_pdef, y_pdef, sets, epochs)
-    P_x, P_z, corr = model_outputs(models, X_pdef, y_pdef, X_zdef, y_zdef)
-    base = rotation_metrics(P_x, P_z, corr, sets, rotations)
-    baseline = pd.DataFrame([{"rotation": t, "auc": base[t][0], "acc": base[t][1],
-                              "n_members": len(sets[t - 1]),
-                              "n_nonmembers": len(X_pdef) - len(sets[t - 1])} for t in rotations])
-    log("defender baseline: " + ", ".join(f"t={t}: AUC={a:.4f} Acc={c:.4f}" for t, (a, c) in base.items()))
+def proxy_attack(target, refs, X_mem, y_mem, X_non, y_non, X_z, y_z):
+    """Proxy offline RMIA with all-OUT references (a = 1): (AUC members vs non-members, target accuracy on
+    the non-members)."""
+    def probs(X, y):
+        return true_prob(target, X, y), np.stack([true_prob(m, X, y) for m in refs])
+
+    pt_z, pr_z = probs(X_z, y_z)
+    s_in = offline_score(*probs(X_mem, y_mem), pt_z, pr_z, a=1.0)
+    s_out = offline_score(*probs(X_non, y_non), pt_z, pr_z, a=1.0)
+    return auc(s_in, s_out), float(correct(target, X_non, y_non).mean())
+
+
+def run_defender(X_tr, y_tr, X_pdef, y_pdef, X_zdef, y_zdef, params, n_grid=CONT_GRID, epochs=EPOCHS,
+                 log=print, intervene_z=True, k_ref=K_REF, n_ref_train=None):
+    """Returns baseline (one row), per-(j, α) interventions and per-attribute effects.
+    intervene_z=False leaves Z_def unchanged in the interventions (only D_train and N are set to α).
+    k_ref reference models; each is trained on n_ref_train records of R drawn with seed 2000 + k
+    (default: all of R)."""
+    N, R = split_pdef(len(X_pdef))
+    dev = X_pdef.device
+    X_non, y_non = X_pdef[torch.as_tensor(N, device=dev)], y_pdef[torch.as_tensor(N, device=dev)]
+    n_ref = len(R) if n_ref_train is None else n_ref_train
+    target = train(X_tr, y_tr, seed=TARGET_SEED, epochs=epochs)
+    refs = []
+    for k in range(1, k_ref + 1):
+        sub = np.sort(np.random.default_rng(REF_SEED_BASE + k).choice(len(R), n_ref, replace=False))
+        idx = torch.as_tensor(R[sub], device=dev)
+        refs.append(train(X_pdef[idx], y_pdef[idx], seed=REF_SEED_BASE + k, epochs=epochs))
+
+    base_auc, base_acc = proxy_attack(target, refs, X_tr, y_tr, X_non, y_non, X_zdef, y_zdef)
+    baseline = pd.DataFrame([{"target_seed": TARGET_SEED, "auc": base_auc, "acc": base_acc,
+                              "n_members": len(X_tr), "n_nonmembers": len(N), "n_ref_train": n_ref,
+                              "k_ref": k_ref}])
+    log(f"defender baseline: AUC={base_auc:.4f} Acc={base_acc:.4f}")
 
     Xp_np = X_pdef.cpu().numpy()
     records = []
     for a in params["attributes"]:
+        cols = a["columns"]
         for label, vec in value_set(a, Xp_np, n_grid):
-            Xp_i = set_attribute(X_pdef, a["columns"], vec)
-            Xz_i = set_attribute(X_zdef, a["columns"], vec)
-            met = rotation_metrics(*model_outputs(models, Xp_i, y_pdef, Xz_i, y_zdef), sets, rotations)
-            for t, (au, ac) in met.items():
-                records.append({"j": a["j"], "attribute": a["name"], "alpha": label, "t": t, "auc": au,
-                                "acc": ac, "ace_mia": au - base[t][0], "ace_acc": ac - base[t][1]})
+            au, ac = proxy_attack(target, refs, set_attribute(X_tr, cols, vec), y_tr,
+                                  set_attribute(X_non, cols, vec), y_non,
+                                  set_attribute(X_zdef, cols, vec) if intervene_z else X_zdef, y_zdef)
+            records.append({"j": a["j"], "attribute": a["name"], "alpha": label, "auc": au, "acc": ac,
+                            "ace_mia": au - base_auc, "ace_acc": ac - base_acc})
     rec = pd.DataFrame(records)
 
-    # ΔMIA_j = mean_t mean_α ACE_t^MIA(j, α); likewise ΔAcc_j
-    per_t = rec.groupby(["j", "t"])[["ace_mia", "ace_acc"]].mean().reset_index()
-    effects = per_t.groupby("j")[["ace_mia", "ace_acc"]].mean().rename(
+    # ΔMIA_j = mean_α ACE^MIA(j, α); likewise ΔAcc_j
+    effects = rec.groupby("j")[["ace_mia", "ace_acc"]].mean().rename(
         columns={"ace_mia": "dMIA", "ace_acc": "dAcc"}).reset_index()
     effects["n_values"] = rec.groupby("j").alpha.nunique().to_numpy()
-
-    half = len(rotations) // 2
-    h1, h2 = rotations[:half], rotations[half:]
-    d1 = per_t[per_t.t.isin(h1)].groupby("j").ace_mia.mean()
-    d2 = per_t[per_t.t.isin(h2)].groupby("j").ace_mia.mean()
-    rho = float(spearmanr(d1.to_numpy(), d2.to_numpy()).statistic)
-    effects["dMIA_half1"], effects["dMIA_half2"] = d1.to_numpy(), d2.to_numpy()
-    split = {"rotations_half1": list(h1), "rotations_half2": list(h2), "spearman": rho}
-    return baseline, rec, effects, split, sets
+    return baseline, rec, effects

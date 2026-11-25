@@ -1,0 +1,309 @@
+{
+  "dataset": "adult",
+  "n_classes": 2,
+  "attributes": [
+    {
+      "j": 1,
+      "name": "age",
+      "type": "continuous",
+      "log1p": false,
+      "min": 17.0,
+      "max": 90.0,
+      "columns": [
+        0
+      ]
+    },
+    {
+      "j": 2,
+      "name": "workclass",
+      "type": "categorical",
+      "categories": [
+        "Private",
+        "Self-emp-not-inc",
+        "Self-emp-inc",
+        "Federal-gov",
+        "Local-gov",
+        "State-gov",
+        "Without-pay",
+        "Never-worked",
+        "Unknown"
+      ],
+      "columns": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "j": 3,
+      "name": "education-num",
+      "type": "continuous",
+      "log1p": false,
+      "min": 1.0,
+      "max": 16.0,
+      "columns": [
+        10
+      ]
+    },
+    {
+      "j": 4,
+      "name": "marital-status",
+      "type": "categorical",
+      "categories": [
+        "Married-civ-spouse",
+        "Divorced",
+        "Never-married",
+        "Separated",
+        "Widowed",
+        "Married-spouse-absent",
+        "Married-AF-spouse",
+        "Unknown"
+      ],
+      "columns": [
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18
+      ]
+    },
+    {
+      "j": 5,
+      "name": "occupation",
+      "type": "categorical",
+      "categories": [
+        "Tech-support",
+        "Craft-repair",
+        "Other-service",
+        "Sales",
+        "Exec-managerial",
+        "Prof-specialty",
+        "Handlers-cleaners",
+        "Machine-op-inspct",
+        "Adm-clerical",
+        "Farming-fishing",
+        "Transport-moving",
+        "Priv-house-serv",
+        "Protective-serv",
+        "Armed-Forces",
+        "Unknown"
+      ],
+      "columns": [
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33
+      ]
+    },
+    {
+      "j": 6,
+      "name": "relationship",
+      "type": "categorical",
+      "categories": [
+        "Wife",
+        "Own-child",
+        "Husband",
+        "Not-in-family",
+        "Other-relative",
+        "Unmarried",
+        "Unknown"
+      ],
+      "columns": [
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40
+      ]
+    },
+    {
+      "j": 7,
+      "name": "race",
+      "type": "categorical",
+      "categories": [
+        "White",
+        "Asian-Pac-Islander",
+        "Amer-Indian-Eskimo",
+        "Other",
+        "Black",
+        "Unknown"
+      ],
+      "columns": [
+        41,
+        42,
+        43,
+        44,
+        45,
+        46
+      ]
+    },
+    {
+      "j": 8,
+      "name": "sex",
+      "type": "categorical",
+      "categories": [
+        "Female",
+        "Male",
+        "Unknown"
+      ],
+      "columns": [
+        47,
+        48,
+        49
+      ]
+    },
+    {
+      "j": 9,
+      "name": "capital-gain",
+      "type": "continuous",
+      "log1p": true,
+      "min": 0.0,
+      "max": 11.512925464970229,
+      "columns": [
+        50
+      ]
+    },
+    {
+      "j": 10,
+      "name": "capital-loss",
+      "type": "continuous",
+      "log1p": true,
+      "min": 0.0,
+      "max": 8.379539026117442,
+      "columns": [
+        51
+      ]
+    },
+    {
+      "j": 11,
+      "name": "hours-per-week",
+      "type": "continuous",
+      "log1p": false,
+      "min": 1.0,
+      "max": 99.0,
+      "columns": [
+        52
+      ]
+    },
+    {
+      "j": 12,
+      "name": "native-country",
+      "type": "categorical",
+      "categories": [
+        "United-States",
+        "Cambodia",
+        "England",
+        "Puerto-Rico",
+        "Canada",
+        "Germany",
+        "Outlying-US(Guam-USVI-etc)",
+        "India",
+        "Japan",
+        "Greece",
+        "South",
+        "China",
+        "Cuba",
+        "Iran",
+        "Honduras",
+        "Philippines",
+        "Italy",
+        "Poland",
+        "Jamaica",
+        "Vietnam",
+        "Mexico",
+        "Portugal",
+        "Ireland",
+        "France",
+        "Dominican-Republic",
+        "Laos",
+        "Ecuador",
+        "Taiwan",
+        "Haiti",
+        "Columbia",
+        "Hungary",
+        "Guatemala",
+        "Nicaragua",
+        "Scotland",
+        "Thailand",
+        "Yugoslavia",
+        "El-Salvador",
+        "Trinadad&Tobago",
+        "Peru",
+        "Hong",
+        "Holand-Netherlands",
+        "Unknown"
+      ],
+      "columns": [
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87,
+        88,
+        89,
+        90,
+        91,
+        92,
+        93,
+        94
+      ]
+    }
+  ],
+  "dropped": [
+    "fnlwgt",
+    "education"
+  ],
+  "d_in": 95
+}
