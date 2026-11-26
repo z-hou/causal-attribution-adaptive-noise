@@ -9,7 +9,7 @@ import torch.nn.functional as F
 from .model import correct, logits, true_prob
 from .rmia import A_GRID, auc, offline_score, tpr_at_fpr
 
-K_ATT = 2
+K_ATT = 8
 A_SELECT_N = 1000
 A_SELECT_SEED = 4000
 

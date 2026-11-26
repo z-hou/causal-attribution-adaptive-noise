@@ -17,6 +17,13 @@ def normalise(dMIA, dAcc):
     return V / V.mean(), U / U.mean()
 
 
+def budgets(w, eps_total):
+    """Split the total budget over the attributes: uniform ε_j = ε_total / J, adaptive ε_j = ε_total / J · w_j.
+    Both sum to ε_total because w has mean 1."""
+    eps_mean = eps_total / len(w)
+    return {"uniform": np.full(len(w), eps_mean), "adaptive": eps_mean * np.asarray(w)}
+
+
 def allocate(U, V, c=C_SMOOTH, lo=W_LO, hi=W_HI, iters=200, s_lo=1e-6, s_hi=1e6):
     """§7.2–7.3: raw_j = ((U_j + c)/(V_j + c))^(1/3); find s with Σ clip(s·raw_j, lo, hi) equal to the
     number of attributes, by bisection in log space; w_j = clip(s·raw_j, lo, hi). Returns (w, s)."""

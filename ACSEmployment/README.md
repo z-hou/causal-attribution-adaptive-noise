@@ -1,20 +1,20 @@
 # ACSEmployment：因果归因自适应输入端加噪（非自适应攻击）
 
-把当前 Adult 主实验流程原样搬到 folktables 的 ACSEmployment 任务上（加州，ACS 2018 1-Year 个人数据）。只换了数据读取和预处理，其余步骤（防御方分析、预算分配、输入端加噪、训练、攻击）直接调用 `adaptive_dp/` 里的代码，没有任何改动。样本量和 RMIA 设定与 Adult 主实验 `results/n2000_k8_total_10seeds/nonadaptive` 相同，只报告非自适应攻击：三种方法都用同一组参考模型（在不加噪的 P_att 上训练）和同一个 a。
+把当前 Adult 主实验流程原样搬到 folktables 的 ACSEmployment 任务上（加州，ACS 2018 1-Year 个人数据）。只换了数据读取和预处理，其余步骤（防御方分析、预算分配、输入端加噪、训练、攻击）直接调用 `adaptive_dp/` 里的代码，没有任何改动。设定与 Adult 主实验（`python -m adaptive_dp.run`）相同：标签不加噪，预算全部分给属性；非自适应攻击，三种方法都用同一组参考模型（在不加噪的 P_att 上训练）和同一个 a。
 
 ## 设定（与 Adult 一致）
 
 | 项目 | 取值 |
 | --- | --- |
 | 六段划分 | train 7,000 / test 7,000 / P_def 14,000 / Z_def 2,000 / P_att 14,000 / Z_att 2,000，划分种子 0（`adaptive_dp.data.make_splits`，在去重后的 201,780 条上划分） |
-| 实际使用 | `--n-train 2000 --n-test 2000`：取 D_train、D_test 各前 2,000 条 |
-| 防御方 | 代理离线 RMIA，`--k-def 8` 个参考模型，每个用 P_def 另一半中的 2,000 条训练 |
-| 攻击者 | 离线 RMIA（γ = 2），`--k-att 8` 个参考模型，每个用 P_att 中的 2,000 条训练；a 在攻击者自己的数据上选 |
-| 预算 | `--eps-total T`，T ∈ {2, 4, 8, 16, 32, 50, 64, 70, 80, 90, 100}，平均分给 16 个属性和标签：ε̄ = ε_y = T/17 |
+| 实际使用 | 取 D_train、D_test 各前 2,000 条（`adaptive_dp/run.py` 的 `N_TRAIN`、`N_TEST`） |
+| 防御方 | 代理离线 RMIA，8 个参考模型，每个用 P_def 另一半中的 2,000 条训练 |
+| 攻击者 | 非自适应离线 RMIA（γ = 2），8 个参考模型，每个用 P_att 中的 2,000 条训练；a 在攻击者自己的数据上选 |
+| 预算 | `--eps-total T`，T ∈ {2, 4, 8, 16, 32, 50, 64, 70, 80, 90, 100}，全部平均分给 16 个属性：ε̄ = T/16；标签不加噪 |
 | 种子 | 0–9（10 个） |
 | 模型与训练 | MLP（99 → 512 → 256 → 2），Adam lr 1e-3，batch 256，30 epoch |
 
-注意：属性个数不同，同一 ε_total 下每属性的预算也不同：Adult 12 个属性（ε̄ = T/13），Cardio 11 个（T/12），ACSEmployment 16 个（T/17）。
+注意：属性个数不同，同一 ε_total 下每属性的预算也不同：Adult 12 个属性（ε̄ = T/12），Cardio 11 个（T/11），ACSEmployment 16 个（T/16）。
 
 ## 数据
 
@@ -58,7 +58,8 @@ ACSEmployment/
   data/raw/           Census 原始文件和 2018 数据字典
   results/
     run_acs_5761077.log              完整运行日志（含逐种子结果）
-    nonadaptive/epstotal<T>/         results.csv（30 个目标模型）、allocation.csv（16 个属性）
+    nonadaptive_labelclean/          当前设置（标签不加噪）：epstotal<T>/、summary.csv、comparison.csv
+    nonadaptive/epstotal<T>/         早期的标签加噪运行：results.csv（30 个目标模型）、allocation.csv（16 个属性）
     nonadaptive/summary.csv          每个 ε_total、每种方法的均值和标准差
     nonadaptive/comparison.csv       adaptive − uniform 的配对差值、p 值、胜出种子数
 ```
@@ -76,16 +77,17 @@ sbatch ACSEmployment/run_acs.sbatch
 ```bash
 source env.sh
 python -B ACSEmployment/acs_data.py      # 打印数据检查和预处理参数
-F="--n-train 2000 --n-test 2000 --k-att 8 --k-def 8 --non-adaptive --seeds 0 1 2 3 4 5 6 7 8 9"
 for T in 2 4 8 16 32 50 64 70 80 90 100; do
-  python -B ACSEmployment/run_acs.py $F --eps-total $T --out ACSEmployment/results/nonadaptive/epstotal$T/
+  python -B ACSEmployment/run_acs.py --eps-total $T --out ACSEmployment/results/nonadaptive_labelclean/epstotal$T/
 done
 python -B ACSEmployment/summarize.py
 ```
 
-`run_acs.py` 的参数与 `python -m adaptive_dp.run` 完全相同。运行时不需要安装 folktables。结果于 2026-11-25 在 1 块 GH200 上用 `env.sh` 环境跑出，作业 5761077，用时 4 分 44 秒。
+`run_acs.py` 的参数与 `python -m adaptive_dp.run` 完全相同。运行时不需要安装 folktables。早期的标签加噪结果（`results/nonadaptive/`）于 2026-11-25 跑出，作业 5761077，用时 4 分 44 秒。标签不加噪的结果（`results/nonadaptive_labelclean/`）也于 2026-11-25 跑出；2026-11-26 用当前代码重跑 ε_total = 64，`results.csv` 和 `allocation.csv` 与之逐字节一致。
 
 ## 结果（非自适应攻击）
+
+> 本节各表来自早期的标签加噪运行（ε̄ = ε_y = T/17，`results/nonadaptive/`），当前代码不再生成。当前设置（标签不加噪）的结果在 `results/nonadaptive_labelclean/`：运行 `python -B ACSEmployment/summarize.py` 可打印汇总表，折线图见 `figure/acs_employment.png`。
 
 10 个种子的均值 ± 样本标准差。test_acc 和 TPR@1%FPR 的单位是 %。成员是 D_train 的 2,000 条，非成员是 D_test 的 2,000 条。攻击者选出的 a 在所有设置下都是 0.0。nonprivate 不加噪，所有 ε_total 下结果相同。
 

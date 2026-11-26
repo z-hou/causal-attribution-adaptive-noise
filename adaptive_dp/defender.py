@@ -4,8 +4,9 @@ The proxy target is m_D = train(D_train, seed 0), the same model as the nonpriva
 It is attacked by a proxy offline RMIA (γ = 2):
 
 - members: all of D_train; non-members N: a random half of P_def;
-- K_REF reference models, all trained on the other half R of P_def (seeds 2001…2004), so they are OUT
-  for every evaluated record and Pr(x) is their mean (the offline formula with a = 1);
+- K_REF = 8 reference models, each trained on |D_train| records drawn from the other half R of P_def
+  (seeds 2001…2008), so they are OUT for every evaluated record and Pr(x) is their mean (the offline
+  formula with a = 1);
 - Pr(z) is the mean over the reference models on Z_def; the accuracy is that of m_D on N.
 
 FSE-2022 interventions (§6.3) set attribute j of every record of D_train, N and Z_def to α. ΔMIA_j and
@@ -19,7 +20,7 @@ from .model import correct, true_prob
 from .rmia import auc, offline_score
 from .train import EPOCHS, train
 
-K_REF = 4
+K_REF = 8
 CONT_GRID = 10
 PDEF_SPLIT_SEED = 2000
 REF_SEED_BASE = 2000
@@ -76,18 +77,15 @@ def proxy_attack(target, refs, X_mem, y_mem, X_non, y_non, X_z, y_z):
 
 
 def run_defender(X_tr, y_tr, X_pdef, y_pdef, X_zdef, y_zdef, params, n_grid=CONT_GRID, epochs=EPOCHS,
-                 log=print, intervene_z=True, k_ref=K_REF, n_ref_train=None):
-    """Returns baseline (one row), per-(j, α) interventions and per-attribute effects.
-    intervene_z=False leaves Z_def unchanged in the interventions (only D_train and N are set to α).
-    k_ref reference models; each is trained on n_ref_train records of R drawn with seed 2000 + k
-    (default: all of R)."""
+                 log=print):
+    """Returns baseline (one row), per-(j, α) interventions and per-attribute effects."""
     N, R = split_pdef(len(X_pdef))
     dev = X_pdef.device
     X_non, y_non = X_pdef[torch.as_tensor(N, device=dev)], y_pdef[torch.as_tensor(N, device=dev)]
-    n_ref = len(R) if n_ref_train is None else n_ref_train
+    n_ref = len(X_tr)                                  # reference models are trained on |D_train| records
     target = train(X_tr, y_tr, seed=TARGET_SEED, epochs=epochs)
     refs = []
-    for k in range(1, k_ref + 1):
+    for k in range(1, K_REF + 1):
         sub = np.sort(np.random.default_rng(REF_SEED_BASE + k).choice(len(R), n_ref, replace=False))
         idx = torch.as_tensor(R[sub], device=dev)
         refs.append(train(X_pdef[idx], y_pdef[idx], seed=REF_SEED_BASE + k, epochs=epochs))
@@ -95,7 +93,7 @@ def run_defender(X_tr, y_tr, X_pdef, y_pdef, X_zdef, y_zdef, params, n_grid=CONT
     base_auc, base_acc = proxy_attack(target, refs, X_tr, y_tr, X_non, y_non, X_zdef, y_zdef)
     baseline = pd.DataFrame([{"target_seed": TARGET_SEED, "auc": base_auc, "acc": base_acc,
                               "n_members": len(X_tr), "n_nonmembers": len(N), "n_ref_train": n_ref,
-                              "k_ref": k_ref}])
+                              "k_ref": K_REF}])
     log(f"defender baseline: AUC={base_auc:.4f} Acc={base_acc:.4f}")
 
     Xp_np = X_pdef.cpu().numpy()
@@ -105,7 +103,7 @@ def run_defender(X_tr, y_tr, X_pdef, y_pdef, X_zdef, y_zdef, params, n_grid=CONT
         for label, vec in value_set(a, Xp_np, n_grid):
             au, ac = proxy_attack(target, refs, set_attribute(X_tr, cols, vec), y_tr,
                                   set_attribute(X_non, cols, vec), y_non,
-                                  set_attribute(X_zdef, cols, vec) if intervene_z else X_zdef, y_zdef)
+                                  set_attribute(X_zdef, cols, vec), y_zdef)
             records.append({"j": a["j"], "attribute": a["name"], "alpha": label, "auc": au, "acc": ac,
                             "ace_mia": au - base_auc, "ace_acc": ac - base_acc})
     rec = pd.DataFrame(records)

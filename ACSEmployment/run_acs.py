@@ -2,11 +2,10 @@
 
 Only the data pipeline is swapped (adaptive_dp.data.prepare → acs_data.prepare); defender analysis,
 budget allocation, input perturbation, training and the attack are the Adult code itself, and all
-command-line flags are those of adaptive_dp.run. With --eps-total T the budget is split equally over the
-16 attributes and the label: ε̄ = ε_y = T / 17.
+command-line flags are those of adaptive_dp.run. With --eps-total T the whole budget goes to the
+16 attributes (ε̄ = T / 16); the label is not perturbed.
 
-    python -B ACSEmployment/run_acs.py --n-train 2000 --n-test 2000 --k-att 8 --k-def 8 --non-adaptive \
-        --seeds 0 1 2 3 4 5 6 7 8 9 --eps-total 16 --out ACSEmployment/results/nonadaptive/epstotal16/
+    python -B ACSEmployment/run_acs.py --eps-total 16 --out ACSEmployment/results/nonadaptive_labelclean/epstotal16/
 """
 import sys
 from pathlib import Path

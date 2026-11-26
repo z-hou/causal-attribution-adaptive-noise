@@ -1,6 +1,6 @@
 """Summarise the ACSEmployment non-adaptive runs: mean ± sd over seeds, and adaptive − uniform (paired by seed).
 
-    python -B ACSEmployment/summarize.py [results dir, default ACSEmployment/results/nonadaptive]
+    python -B ACSEmployment/summarize.py [results dir, default ACSEmployment/results/nonadaptive_labelclean]
 
 Writes <dir>/summary.csv (one row per ε_total and method) and <dir>/comparison.csv (adaptive − uniform),
 and prints both as Markdown tables.
@@ -13,7 +13,7 @@ import pandas as pd
 from scipy.stats import ttest_rel
 
 HERE = Path(__file__).resolve().parent
-OUT = Path(sys.argv[1]) if len(sys.argv) > 1 else HERE / "results" / "nonadaptive"
+OUT = Path(sys.argv[1]) if len(sys.argv) > 1 else HERE / "results" / "nonadaptive_labelclean"
 METRICS = [("test_acc", 100), ("rmia_auc", 1), ("rmia_tpr1", 100), ("loss_auc", 1)]   # (column, scale)
 
 

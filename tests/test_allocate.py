@@ -1,7 +1,7 @@
 """§10.5 (AGENT.md §10.5): allocation of the budget shares w_j."""
 import numpy as np
 
-from adaptive_dp.allocate import allocate, normalise
+from adaptive_dp.allocate import allocate, budgets, normalise
 
 
 def _scores(seed):
@@ -41,3 +41,14 @@ def test_raising_one_risk_score_does_not_raise_its_budget():
                 V2[j] += bump
                 eps, _ = allocate(U, V2)
                 assert eps[j] <= base[j] + 1e-9
+
+
+def test_budgets_sum_to_eps_total():
+    for seed in range(20):
+        V, U = _scores(seed)
+        w, _ = allocate(U, V)
+        for eps_total in (2.0, 16.0, 64.0, 100.0):
+            eps = budgets(w, eps_total)
+            for e in eps.values():
+                assert abs(e.sum() - eps_total) / eps_total < 1e-6
+            assert np.allclose(eps["uniform"], eps_total / 12)

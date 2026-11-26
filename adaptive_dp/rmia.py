@@ -1,4 +1,4 @@
-"""RMIA scores (online §6.2, offline §8.2), AUC and TPR@FPR."""
+"""Offline RMIA score, AUC and TPR@FPR."""
 import numpy as np
 from sklearn.metrics import roc_auc_score, roc_curve
 
@@ -38,13 +38,6 @@ def rmia_score_bruteforce(ratio_x, ratio_z, gamma=GAMMA):
     rx = np.asarray(ratio_x, dtype=np.float64)[:, None]
     rz = np.asarray(ratio_z, dtype=np.float64)[None, :]
     return (rx / rz >= gamma).mean(axis=1)
-
-
-def online_score(p_target_x, p_refs_x, p_target_z, p_refs_z, gamma=GAMMA):
-    """§6.2: Pr(x), Pr(z) are the means over the reference models (IN and OUT mixed)."""
-    pr_x = np.mean(p_refs_x, axis=0)
-    pr_z = np.mean(p_refs_z, axis=0)
-    return rmia_score(p_target_x / pr_x, p_target_z / pr_z, gamma)
 
 
 def offline_score(p_target_x, p_refs_x, p_target_z, p_refs_z, a, gamma=GAMMA):

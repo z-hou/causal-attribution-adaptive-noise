@@ -1,8 +1,7 @@
 """§10.2: fast RMIA score equals brute force; AUC behaves on synthetic data."""
 import numpy as np
 
-from adaptive_dp.rmia import (auc, offline_score, online_score, rmia_score,
-                              rmia_score_bruteforce)
+from adaptive_dp.rmia import auc, offline_score, rmia_score, rmia_score_bruteforce
 
 
 def test_fast_score_equals_bruteforce():
@@ -39,8 +38,8 @@ def _synthetic(boost, n=20_000, n_z=2_000, n_ref=3, seed=1):
 
 def test_auc_high_when_members_are_boosted():
     pt_in, pt_out, pt_z, pr_in, pr_out, pr_z = _synthetic(boost=3.0)
-    s_in = online_score(pt_in, pr_in, pt_z, pr_z)
-    s_out = online_score(pt_out, pr_out, pt_z, pr_z)
+    s_in = offline_score(pt_in, pr_in, pt_z, pr_z, a=1.0)           # defender's proxy attack
+    s_out = offline_score(pt_out, pr_out, pt_z, pr_z, a=1.0)
     assert auc(s_in, s_out) > 0.9
     s_in = offline_score(pt_in, pr_in, pt_z, pr_z, a=0.5)
     s_out = offline_score(pt_out, pr_out, pt_z, pr_z, a=0.5)
@@ -49,8 +48,8 @@ def test_auc_high_when_members_are_boosted():
 
 def test_auc_half_when_target_and_references_match():
     pt_in, pt_out, pt_z, pr_in, pr_out, pr_z = _synthetic(boost=0.0)
-    s_in = online_score(pt_in, pr_in, pt_z, pr_z)
-    s_out = online_score(pt_out, pr_out, pt_z, pr_z)
+    s_in = offline_score(pt_in, pr_in, pt_z, pr_z, a=1.0)           # defender's proxy attack
+    s_out = offline_score(pt_out, pr_out, pt_z, pr_z, a=1.0)
     assert abs(auc(s_in, s_out) - 0.5) < 0.02
     s_in = offline_score(pt_in, pr_in, pt_z, pr_z, a=0.3)
     s_out = offline_score(pt_out, pr_out, pt_z, pr_z, a=0.3)

@@ -1,12 +1,9 @@
-"""Input perturbation (§5.3): generalised randomised response, Laplace, label randomised response.
+"""Input perturbation of the attributes: generalised randomised response and Laplace.
 
-Every record is perturbed once. Attribute j is ε_j-LDP, the label ε_y-LDP, so a record is
-(Σ_j ε_j + ε_y)-LDP; training on the perturbed data is post-processing.
+Every record is perturbed once; attribute j is ε_j-LDP, so the attributes of a record are (Σ_j ε_j)-LDP and
+training on the perturbed data is post-processing. The label is not sensitive and is not perturbed.
 """
 import numpy as np
-
-EPS_MEAN = 3.0      # ε̄: average attribute budget
-EPS_Y = 3.0         # label budget
 
 
 def grr_keep_prob(eps, k):
@@ -36,18 +33,12 @@ def laplace_mech(x, eps, rng):
     return np.clip(np.asarray(x, dtype=np.float64) + laplace_noise(len(x), eps, rng), 0.0, 1.0)
 
 
-def label_rr(y, eps, rng):
-    """Binary randomised response: keep with probability e^ε / (1 + e^ε), otherwise flip."""
-    y = np.asarray(y)
-    keep = rng.random(len(y)) < np.exp(eps) / (1 + np.exp(eps))
-    return np.where(keep, y, 1 - y)
+def perturb(X, params, eps_vec, seed):
+    """Perturb every attribute of every record once and return the perturbed matrix.
 
-
-def perturb(X, y, params, eps_vec, eps_y, seed):
-    """perturb(D, ε_vec, ε_y, seed): perturb every attribute of every record once, then the label.
-
-    X is the encoded matrix (numpy, float32), y the 0/1 labels. Attributes are processed in the
-    order j = 1…12, then the label, all with one numpy generator seeded by `seed`."""
+    X is the encoded matrix (numpy, float32). Attributes are processed in the order j = 1, 2, …, all with
+    one numpy generator seeded by `seed`: categorical attributes by generalised randomised response
+    (the output stays a valid one-hot code), continuous ones by Laplace noise clipped to [0, 1]."""
     rng = np.random.default_rng(seed)
     Xn = np.array(X, dtype=np.float32, copy=True)
     for a, eps in zip(params["attributes"], eps_vec):
@@ -59,8 +50,7 @@ def perturb(X, y, params, eps_vec, eps_y, seed):
             block = np.zeros((len(Xn), k), dtype=np.float32)
             block[np.arange(len(Xn)), new] = 1.0
             Xn[:, cols] = block
-        else:                                        # continuous: Lap(0, 1/ε), clipped to [0, 1]
+        else:
             for c in cols:
                 Xn[:, c] = laplace_mech(Xn[:, c], eps, rng)
-    yn = label_rr(y, eps_y, rng)                     # binary randomised response (§5.3)
-    return Xn, yn.astype(np.int64)
+    return Xn

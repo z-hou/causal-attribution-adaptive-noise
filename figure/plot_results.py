@@ -2,6 +2,7 @@
 
 Each figure has three panels against the total budget ε_total: test accuracy, RMIA AUC and TPR@1%FPR.
 Lines are the mean over the 10 seeds, the bands ±1 sample sd; the grey line is the no-noise baseline.
+Labels are clean: the whole budget goes to the attributes.
 
     python -B figure/plot_results.py          # writes figure/{adult,acs_employment}.{png,pdf}
 """
@@ -15,8 +16,9 @@ import pandas as pd  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "figure"
-DATASETS = [("adult", "Adult", ROOT / "results" / "n2000_k8_total_10seeds" / "nonadaptive"),
-            ("acs_employment", "ACSEmployment (California, 2018)", ROOT / "ACSEmployment" / "results" / "nonadaptive")]
+DATASETS = [("adult", "Adult", ROOT / "results" / "n2000_k8_total_10seeds_labelclean" / "nonadaptive"),
+            ("acs_employment", "ACSEmployment (California, 2018)",
+             ROOT / "ACSEmployment" / "results" / "nonadaptive_labelclean")]
 PANELS = [("test_acc", 100, "Test accuracy (%)  ↑ better"),
           ("rmia_auc", 1, "RMIA AUC  ↓ better"),
           ("rmia_tpr1", 100, "TPR at 1% FPR (%)  ↓ better")]
@@ -64,7 +66,7 @@ def plot(key, title, d):
         ax.tick_params(length=0)
     handles, labels = axes[0].get_legend_handles_labels()
     fig.legend(handles, labels, loc="upper right", ncol=3, frameon=False, bbox_to_anchor=(0.995, 1.0))
-    fig.suptitle(f"{title}: non-adaptive attack, mean ± 1 sd over {n_seeds} seeds",
+    fig.suptitle(f"{title}: non-adaptive attack, clean labels, mean ± 1 sd over {n_seeds} seeds",
                  x=0.01, y=0.985, ha="left", fontsize=12, color=TEXT)
     fig.tight_layout(rect=(0, 0, 1, 0.95), w_pad=2.5)
     for ext in ("png", "pdf"):
